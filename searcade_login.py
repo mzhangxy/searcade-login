@@ -44,7 +44,7 @@ def login_searcade(username, password):
 
             print(f"正在等待密码输入框: {password_selector}")
             page.wait_for_selector(password_selector, timeout=60000)
-            print(f"正在等待Login按钮: {Login_button_selector}")
+            print(f"正在等待Login按钮: {login_button_selector}")
             page.wait_for_selector(login_button_selector, timeout=60000)
 
             print(f"正在填充密码")
