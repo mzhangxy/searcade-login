@@ -1,5 +1,5 @@
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync  # Install with: pip install playwright-stealth
+from playwright_stealth import stealth  # Install with: pip install playwright-stealth
 import os
 import time
 
@@ -7,7 +7,7 @@ def login_searcade(username, password):
     with sync_playwright() as p:
         # Launch with anti-detection args
         browser = p.chromium.launch(
-            headless=True,
+            headless=False,
             args=[
                 '--disable-blink-features=AutomationControlled',
                 '--no-sandbox',
@@ -24,7 +24,7 @@ def login_searcade(username, password):
         page = context.new_page()
         
         # Apply stealth to hide automation
-        stealth_sync(page)
+        stealth(page)
         
         # Hide webdriver property
         page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
