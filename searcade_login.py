@@ -15,28 +15,51 @@ def login_searcade(username, password):
             page.wait_for_selector(login_link_selector, timeout=30000)
             page.click(login_link_selector)
 
-            print("正在等待跳转到登录页面: https://searcade.userveria.com/login")
-            page.wait_for_url("https://searcade.userveria.com/login", timeout=30000)
+            print("正在等待跳转到登录页面")
+            page.wait_for_url("**userveria.com**", timeout=30000)
             print("已成功跳转到登录页面。")
 
             username_selector = 'input[name="email"]'
-            password_selector = 'input[name="password"]'
-            login_button_selector = 'button:has-text("Login")'
+            
+            #password_selector = 'input[name="password"]'
+            continue_button_selector = 'button:has-text("Continue with email")'
 
             print(f"正在等待用户名输入框: {username_selector}")
             page.wait_for_selector(username_selector, timeout=60000)
-            print(f"正在等待密码输入框: {password_selector}")
-            page.wait_for_selector(password_selector, timeout=60000)
-            print(f"正在等待登录按钮: {login_button_selector}")
-            page.wait_for_selector(login_button_selector, timeout=60000)
+            
+            #print(f"正在等待密码输入框: {password_selector}")
+            #page.wait_for_selector(password_selector, timeout=60000)
+            
+            print(f"正在等待Continue按钮: {continue_button_selector}")
+            page.wait_for_selector(continue_button_selector, timeout=60000)
 
             print(f"正在填充账号: {username}")
             page.fill(username_selector, username)
+            #page.fill(password_selector, password)
+
+            print("正在点击继续按钮...")
+            page.click(continue_button_selector)
+
+            print("正在等待跳转到密码页面")
+            password_page_selector = 'text="Enter your password to continue"'
+            page.wait_for_selector(password_page_selector, timeout=20000)
+            print("已成功跳转到密码页面。")
+
+            password_selector = 'input[name="password"]'
+            login_button_selector = 'button:has-text("Login")'
+
+            print(f"正在等待密码输入框: {password_selector}")
+            page.wait_for_selector(password_selector, timeout=60000)
+            print(f"正在等待Login按钮: {Login_button_selector}")
+            page.wait_for_selector(login_button_selector, timeout=60000)
+
+            print(f"正在填充密码")
             page.fill(password_selector, password)
 
-            print("正在点击登录按钮...")
+            print("正在点击login按钮...")
             page.click(login_button_selector)
-
+            
+            
             # ******** 关键修改点：判断登录成功逻辑 ********
             # 不再等待URL严格匹配，而是等待登录成功后的页面特有元素
             # 从截图看，登录成功后页面有 "Welcome back [用户名]!" 文本
