@@ -1,10 +1,33 @@
 from playwright.sync_api import sync_playwright
+from playwright_stealth import stealth_sync  # Install with: pip install playwright-stealth
 import os
+import time
 
 def login_searcade(username, password):
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        # Launch with anti-detection args
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ]
+        )
+        
+        # Create context with user-agent
+        context = browser.new_context(
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            viewport={'width': 1920, 'height': 1080}
+        )
+        
+        page = context.new_page()
+        
+        # Apply stealth to hide automation
+        stealth_sync(page)
+        
+        # Hide webdriver property
+        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
         try:
             print("正在访问主页: https://searcade.com/en/")
@@ -15,68 +38,59 @@ def login_searcade(username, password):
             page.wait_for_selector(login_link_selector, timeout=30000)
             page.click(login_link_selector)
 
-            print("正在等待跳转到登录页面")
+            # 等待 Userveria 页面加载
+            print("正在等待 Userveria 登录流程页面加载...")
             page.wait_for_url("**userveria.com**", timeout=30000)
-            print("已成功跳转到登录页面。")
-
-            # 添加截图调试
-            page.screenshot(path="debug_login_page.png")
-            print("已保存登录页面截图: debug_login_page.png")
-
-            # 打印页面HTML帮助调试
-            print(page.content())
             
-            username_selector = 'input[name="email"]'
-            continue_button_selector = 'button:has-text("Continue with email")'
+            # 额外等待 Cloudflare 挑战完成（通常几秒）
+            time.sleep(5)  # 给 Cloudflare JS 检查时间
+            page.wait_for_load_state('networkidle', timeout=60000)
 
-            print(f"正在等待用户名输入框: {username_selector}")
-            page.wait_for_selector(username_selector, timeout=60000)
-            
-            print(f"正在等待Continue按钮: {continue_button_selector}")
-            page.wait_for_selector(continue_button_selector, timeout=60000)
+            # 第一步：邮箱输入页面
+            email_input_selector = 'input[type="email"], input[placeholder="mail@example.com"], input[name="email"]'
+            continue_button_selector = 'button:has-text("Continue with email"), button:has-text("Continue")'
 
-            print(f"正在填充账号: {username}")
-            page.fill(username_selector, username)
-
-            print("正在点击继续按钮...")
+            print("正在填写 Email...")
+            page.wait_for_selector(email_input_selector, timeout=60000)
+            page.fill(email_input_selector, username)  # username 就是 email
             page.click(continue_button_selector)
+            
+            # 等待进入密码页面
+            time.sleep(2)
+            password_input_selector = 'input[type="password"], input[name="password"]'
+            login_button_selector = 'button:has-text("Login"), button:has-text("Sign in")'
 
-            print("正在等待跳转到密码页面")
-            password_page_selector = 'text="Enter your password to continue"'
-            page.wait_for_selector(password_page_selector, timeout=20000)
-            print("已成功跳转到密码页面。")
-
-            password_selector = 'input[name="password"]'
-            login_button_selector = 'button:has-text("Login")'
-
-            print(f"正在等待密码输入框: {password_selector}")
-            page.wait_for_selector(password_selector, timeout=60000)
-            print(f"正在等待Login按钮: {login_button_selector}")
-            page.wait_for_selector(login_button_selector, timeout=60000)
-
-            print(f"正在填充密码")
-            page.fill(password_selector, password)
-
-            print("正在点击login按钮...")
+            print("正在填写 Password...")
+            page.wait_for_selector(password_input_selector, timeout=60000)
+            page.fill(password_input_selector, password)
+            print("正在点击登录按钮...")
             page.click(login_button_selector)
-            
-            
-            # ******** 关键修改点：判断登录成功逻辑 ********
-            # 不再等待URL严格匹配，而是等待登录成功后的页面特有元素
-            # 从截图看，登录成功后页面有 "Welcome back [用户名]!" 文本
-            # 也可以等待 "Logout" 按钮或者 "Your servers" 标题
-            success_indicator_selector = 'text="Welcome back"' # 或者 'text="Your servers"', 'a:has-text("Logout")'
+
+            # 处理可能的授权确认页面
+            print("检查是否出现授权确认页面...")
+            authorize_button_selector = 'button:has-text("Allow"), button:has-text("Authorize"), button:has-text("Continue"), button:has-text("Yes")'
+
+            try:
+                page.wait_for_selector(authorize_button_selector, timeout=10000)
+                print("检测到授权确认页面，正在点击允许...")
+                page.click(authorize_button_selector)
+            except:
+                print("无授权确认页面（可能已授权过），继续...")
+
+            # 等待重定向回 Searcade 并登录成功
+            print("正在等待重定向回 Searcade 主页...")
+            page.wait_for_url("https://searcade.com/**", timeout=30000)
+            time.sleep(2)  # 额外等待页面稳定
+
+            # 登录成功指示器（调整为更可靠的，如注销按钮或用户相关文本）
+            success_indicator_selector = 'text="Your servers", a:has-text("Logout"), text="Welcome back"'
 
             print(f"正在等待登录成功指示器: {success_indicator_selector}")
             try:
-                # 等待 Welcome back 文本出现，或等待其他成功的元素
-                page.wait_for_selector(success_indicator_selector, timeout=20000) # 20秒应该足够
+                page.wait_for_selector(success_indicator_selector, timeout=20000)
                 print(f"账号 {username} 登录成功!")
-                # 如果代码执行到这里，说明成功登录，不需要抛出异常
-            except Exception as e:
-                # 如果没有找到成功指示器，那可能就是登录失败了
-                # 此时可以尝试查找错误消息，或者直接标记为失败
-                error_message_selector = '.alert.alert-danger, .error-message, .form-error'
+            except:
+                error_message_selector = '.alert.alert-danger, .error-message, .form-error, .alert, text="Invalid", text="incorrect"'
                 print("未找到登录成功指示器，尝试查找错误消息...")
                 try:
                     error_element = page.wait_for_selector(error_message_selector, timeout=5000)
@@ -86,7 +100,6 @@ def login_searcade(username, password):
                         page.screenshot(path=f"login_fail_{username.replace('@', '_').replace('.', '_')}.png")
                         raise RuntimeError(f"登录失败: {error_text}")
                     else:
-                        # 既没有成功指示器，也没有明显的错误消息，仍然认为是失败
                         print(f"账号 {username} 登录失败: 未找到成功指示器且未检测到特定错误消息。")
                         page.screenshot(path=f"login_mystery_fail_{username.replace('@', '_').replace('.', '_')}.png")
                         raise RuntimeError("登录失败: 状态不明确，未找到成功指示器。")
