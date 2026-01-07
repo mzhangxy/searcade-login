@@ -20,22 +20,16 @@ def login_searcade(username, password):
             print("已成功跳转到登录页面。")
 
             username_selector = 'input[name="Email"]'
-            
-            #password_selector = 'input[name="password"]'
             continue_button_selector = 'button:has-text("Continue with email")'
 
             print(f"正在等待用户名输入框: {username_selector}")
             page.wait_for_selector(username_selector, timeout=60000)
-            
-            #print(f"正在等待密码输入框: {password_selector}")
-            #page.wait_for_selector(password_selector, timeout=60000)
             
             print(f"正在等待Continue按钮: {continue_button_selector}")
             page.wait_for_selector(continue_button_selector, timeout=60000)
 
             print(f"正在填充账号: {username}")
             page.fill(username_selector, username)
-            #page.fill(password_selector, password)
 
             print("正在点击继续按钮...")
             page.click(continue_button_selector)
