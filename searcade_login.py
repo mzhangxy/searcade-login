@@ -7,7 +7,7 @@ def login_searcade(username, password):
     with sync_playwright() as p:
         # Launch with anti-detection args
         browser = p.chromium.launch(
-            headless=False,
+            headless=True,
             args=[
                 '--disable-blink-features=AutomationControlled',
                 '--no-sandbox',
