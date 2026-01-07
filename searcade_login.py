@@ -15,25 +15,27 @@ def login_searcade(username, password):
             page.wait_for_selector(login_link_selector, timeout=30000)
             page.click(login_link_selector)
 
-            print("正在等待跳转到登录页面: https://searcade.userveria.com/login")
-            page.wait_for_url("https://searcade.userveria.com/login", timeout=30000)
-            print("已成功跳转到登录页面。")
+            # ******** 关键变化：等待 Userveria 的分步登录页面 ********
+            print("正在等待 Userveria 登录流程页面加载...")
+            page.wait_for_url("**userveria.com**", timeout=30000)  # 匹配 userveria.com 下的路径
 
-            username_selector = 'input[name="email"]'
-            password_selector = 'input[name="password"]'
-            login_button_selector = 'button:has-text("Login")'
+            # 第一步：邮箱输入页面
+            email_input_selector = 'input[type="email"], input[placeholder="mail@example.com"], input[name="email"]'
+            continue_button_selector = 'button:has-text("Continue with email"), button:has-text("Continue")'
 
-            print(f"正在等待用户名输入框: {username_selector}")
-            page.wait_for_selector(username_selector, timeout=60000)
-            print(f"正在等待密码输入框: {password_selector}")
-            page.wait_for_selector(password_selector, timeout=60000)
-            print(f"正在等待登录按钮: {login_button_selector}")
-            page.wait_for_selector(login_button_selector, timeout=60000)
+            print("正在填写 Email...")
+            page.wait_for_selector(email_input_selector, timeout=60000)
+            page.fill(email_input_selector, username)  # username 就是 email
+            page.click(continue_button_selector)
+            
+            # 等待进入密码页面
+            time.sleep(2)
+            password_input_selector = 'input[type="password"], input[name="password"]'
+            login_button_selector = 'button:has-text("Login"), button:has-text("Sign in")'
 
-            print(f"正在填充账号: {username}")
-            page.fill(username_selector, username)
-            page.fill(password_selector, password)
-
+            print("正在填写 Password...")
+            page.wait_for_selector(password_input_selector, timeout=60000)
+            page.fill(password_input_selector, password)
             print("正在点击登录按钮...")
             page.click(login_button_selector)
 
