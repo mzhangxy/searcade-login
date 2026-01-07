@@ -1,5 +1,6 @@
 from playwright.sync_api import sync_playwright
 import os
+import time
 
 def login_searcade(username, password):
     with sync_playwright() as p:
@@ -39,11 +40,22 @@ def login_searcade(username, password):
             print("正在点击登录按钮...")
             page.click(login_button_selector)
 
+            # ******** 处理可能的授权确认页面（首次登录时会出现） ********
+            print("检查是否出现授权确认页面...")
+            authorize_button_selector = 'button:has-text("Allow"), button:has-text("Authorize"), button:has-text("Continue"), button:has-text("Yes")'
+
+            try:
+                page.wait_for_selector(authorize_button_selector, timeout=10000)  # 短超时
+                print("检测到授权确认页面，正在点击允许...")
+                page.click(authorize_button_selector)
+            except:
+                print("无授权确认页面（可能已授权过），继续...")
+
             # ******** 关键修改点：判断登录成功逻辑 ********
             # 不再等待URL严格匹配，而是等待登录成功后的页面特有元素
             # 从截图看，登录成功后页面有 "Welcome back [用户名]!" 文本
             # 也可以等待 "Logout" 按钮或者 "Your servers" 标题
-            success_indicator_selector = 'text="Welcome back"' # 或者 'text="Your servers"', 'a:has-text("Logout")'
+            success_indicator_selector = 'text="Welcome back", text="Your servers", a:has-text("Logout")'
 
             print(f"正在等待登录成功指示器: {success_indicator_selector}")
             try:
@@ -54,7 +66,7 @@ def login_searcade(username, password):
             except Exception as e:
                 # 如果没有找到成功指示器，那可能就是登录失败了
                 # 此时可以尝试查找错误消息，或者直接标记为失败
-                error_message_selector = '.alert.alert-danger, .error-message, .form-error'
+                error_message_selector = '.alert.alert-danger, .error-message, .form-error, .alert, text="Invalid", text="incorrect"'
                 print("未找到登录成功指示器，尝试查找错误消息...")
                 try:
                     error_element = page.wait_for_selector(error_message_selector, timeout=5000)
