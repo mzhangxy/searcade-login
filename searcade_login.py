@@ -141,3 +141,25 @@ if __name__ == "__main__":
     else:
         print("所有账号均已成功处理。")
         exit(0)
+
+def login_searcade(username, password):
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=False,  # 关键：必须关闭 headless
+            args=['--disable-blink-features=AutomationControlled']
+        )
+        
+        context = browser.new_context(
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        )
+        page = context.new_page()
+
+        try:
+            print("正在访问主页: https://searcade.com/en/")
+            page.goto("https://searcade.com/en/", wait_until="domcontentloaded")
+            
+            # 等待 Cloudflare 验证完成（最多30秒）
+            print("等待 Cloudflare 验证...")
+            page.wait_for_timeout(10000)  # 先等10秒
+            
+            # 后续代码保持不变...
