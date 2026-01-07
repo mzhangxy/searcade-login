@@ -20,27 +20,31 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9' # 可以选择您需要的Python版本
+          python-version: '3.11'  # 推荐升级到 3.11 或 3.12，更稳定
 
-      - name: Install dependencies
+      - name: Install system dependencies for Playwright
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+            libxdamage1 libxrandr2 libgbm1 libxss1 libasound2
+
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install playwright
+          pip install playwright playwright-stealth  # 新增 playwright-stealth
 
       - name: Install Playwright browsers
-        run: playwright install chromium
+        run: |
+          playwright install chromium
+          playwright install-deps chromium  # 关键：安装 Chromium 所需系统库
 
       - name: Run login script
         env:
           SEARCADE_ACCOUNTS: ${{ secrets.SEARCADE_ACCOUNTS }}
-          # 移除了 TEL_TOK 和 TEL_ID 的环境变量配置，因为脚本不再使用它们
-          # TEL_TOK: ${{ secrets.TEL_TOK }}
-          # TEL_ID: ${{ secrets.TEL_ID }}
         run: python searcade_login.py
-        # 移除了 continue-on-error: true
-        # 因为我们希望脚本在失败时立即标记此步骤为失败，从而触发截图上传
-      
-      # 新增的提交步骤
+
       - name: Commit time.txt to repo
         if: success()
         env:
@@ -49,7 +53,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # 如果 time.txt 不存在，说明是第一次运行
           if [ ! -f time.txt ]; then
             echo "首次生成时间：$(date +'%Y-%m-%d %H:%M:%S')" > time.txt
           else
@@ -58,7 +61,6 @@ jobs:
           
           git add time.txt
           
-          # 如果有更改再提交
           if git diff --cached --quiet; then
             echo "无变化，无需提交"
           else
@@ -67,10 +69,9 @@ jobs:
           fi
 
       - name: Upload screenshots on failure
-        # 仅在工作流的任何一个步骤失败时执行
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: screenshots-on-failure
-          # 匹配所有以 .png 结尾的文件，这些是我们脚本中保存的截图
           path: "*.png"
+          retention-days: 7  # 可选：设置保留天数，避免长期占用空间
