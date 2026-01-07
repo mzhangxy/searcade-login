@@ -19,7 +19,7 @@ def login_searcade(username, password):
             page.wait_for_url("**userveria.com**", timeout=30000)
             print("已成功跳转到登录页面。")
 
-            username_selector = 'input[name="Email"]'
+            username_selector = 'input[name="email"]'
             continue_button_selector = 'button:has-text("Continue with email")'
 
             print(f"正在等待用户名输入框: {username_selector}")
