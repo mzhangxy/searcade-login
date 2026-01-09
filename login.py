@@ -1,6 +1,26 @@
 import os
 import time
+import requests
 from seleniumbase import Driver
+
+def send_telegram_msg(message):
+    """发送通知到 Telegram"""
+    token = os.environ.get("TG_BOT_TOKEN")
+    chat_id = os.environ.get("TG_CHAT_ID")
+    if not token or not chat_id:
+        print("⚠️ 未配置 Telegram Token 或 Chat ID，跳过通知。")
+        return
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": f"🤖 **Searcade 保活助手报告**\n\n{message}",
+        "parse_mode": "Markdown"
+    }
+    try:
+        requests.post(url, json=payload, timeout=10)
+    except Exception as e:
+        print(f"发送 TG 通知失败: {e}")
 
 def auto_login():
     email = os.environ.get("USER_EMAIL")
@@ -57,6 +77,7 @@ def auto_login():
         else:
             print(f"未能确认登录状态，当前路径: {driver.current_url}")
             driver.save_screenshot("debug_login.png")
+            send_telegram_msg("❌ 登录失败：未能进入管理后台 ")
             return  # 登录失败则终止后续巡检
 
         # 第三步：服务器状态巡检 
@@ -82,9 +103,13 @@ def auto_login():
                 status_text = driver.get_text(f"{id_selector} span").strip().lower()
                 
                 if "online" in status_text:
-                    print(f"🟢 服务器 {name} (ID: {s_id}) 正常在线。")
+                    msg = f"🟢 服务器 {name} (ID: {s_id}) 正常在线。"
+                    print(msg)
+                    send_telegram_msg(msg)
                 else:
-                    print(f"🔴 服务器 {name} (ID: {s_id}) 不在线，准备进入控制台...")
+                    msg = f"🔴 服务器 `{name}` (ID: {s_id}) 掉线了！状态: {status_text}。正在尝试重启..."
+                    print(msg)
+                    send_telegram_msg(msg)
                     
                     # 直接跳转到控制台 URL，比点击卡片更高效、更不容易出错
                     console_url = f"https://searcade.com/en/admin/servers/{s_id}"
@@ -98,19 +123,25 @@ def auto_login():
                     try:
                         # 监测状态变为 Online
                         driver.wait_for_text("Online", 'span[class*="badge"]', timeout=90)
-                        print(f"🎊 服务器 {name} 重启成功！")
+                        success_msg = f"🎊 服务器 {name} 重启成功！"
+                        print(success_msg)
+                        send_telegram_msg(success_msg)
                     except:
-                        print(f"❌ 等待超时，请手动检查服务器 {name}。")
+                        fail_msg = f"❌ 服务器 `{name}` 重启失败，请手动检查。"
+                        print(fail_msg)
+                        send_telegram_msg(fail_msg)
                     
                     # 返回列表页继续检查下一个
                     driver.get("https://searcade.com/en/admin")
                     time.sleep(5)
             else:
-                print(f"❓ 未能在页面上找到 ID 为 {s_id} 的服务器。")
+                print(f"❓ 未找到服务器 {name}")
 
     except Exception as e:
-        print(f"❌ 运行过程中发生错误: {e}")
+        error_msg = f"❌ 运行过程中发生错误: {e}"
         driver.save_screenshot("error_report.png")
+        print(error_msg)
+        send_telegram_msg(error_msg)
     finally:
         driver.quit()
 
