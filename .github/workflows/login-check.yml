@@ -1,68 +1,43 @@
-name: Searcade Login Check
+name: Auto Login Searchade
 
 on:
+  workflow_dispatch: # 手动触发
   schedule:
-    - cron: '0 0 */3 * *'
-  workflow_dispatch:
-
-permissions:
-  contents: write
+    - cron: '0 0 * * *' # 每天运行一次
 
 jobs:
-  login-check:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'  # 推荐 3.11 或 3.12，更稳定
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install playwright playwright-stealth  # 包含 stealth
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install seleniumbase
+        # 安装浏览器和驱动
+        sbase install chromedriver
+        sudo apt-get install -y xvfb
 
-      - name: Install Playwright browsers and dependencies
-        run: |
-          playwright install chromium
-          playwright install-deps chromium  # 关键：自动安装正确版本的系统依赖（包括 libasound2t64）
+    - name: Run Login Script
+      env:
+        USER_EMAIL: ${{ secrets.USER_EMAIL }}
+        USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+      run: |
+        # 使用 xvfb-run 在虚拟显示器中运行，配合 uc 模式效果更好
+        xvfb-run python login.py
 
-      - name: Run login script
-        env:
-          SEARCADE_ACCOUNTS: ${{ secrets.SEARCADE_ACCOUNTS }}
-        run: python searcade_login.py
-
-      - name: Commit time.txt to repo
-        if: success()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          if [ ! -f time.txt ]; then
-            echo "首次生成时间：$(date +'%Y-%m-%d %H:%M:%S')" > time.txt
-          else
-            echo "$(date +'%Y-%m-%d %H:%M:%S')" > time.txt
-          fi
-          
-          git add time.txt
-          
-          if git diff --cached --quiet; then
-            echo "无变化，无需提交"
-          else
-            git commit -m "⏱️ 更新时间文件: $(date +'%Y-%m-%d %H:%M:%S')"
-            git push origin HEAD:main
-          fi
-
-      - name: Upload screenshots on failure
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots-on-failure
-          path: "*.png"
-          retention-days: 7
+    - name: Upload Screenshots (if failed)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: screenshots
+        path: |
+          *.png
