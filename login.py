@@ -32,7 +32,7 @@ def auto_login():
         driver.type('input[type="email"]', email)
         print("已输入 Email")
         
-        # 点击 Continue (根据图片，这通常是一个 type="submit" 的 button)
+        # 点击 Continue (通常是一个 type="submit" 的 button)
         driver.click('button[type="submit"]')
         
         # 第二步：输入 Password
@@ -51,7 +51,7 @@ def auto_login():
         current_url = driver.current_url
         print(f"当前页面 URL: {current_url}")
 
-        # 只要 URL 包含 admin 或页面出现了 Logout 文本，就视为成功
+        # 只要 URL 包含 admin 或页面出现了"Successfully signed in as mzhangxy"文本，就视为成功
         if driver.is_text_visible("Successfully signed in as mzhangxy"):
             print("✅ 登录成功！已成功进入管理后台。")
         else:
