@@ -30,6 +30,8 @@ jobs:
       env:
         USER_EMAIL: ${{ secrets.USER_EMAIL }}
         USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+        TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+        TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
       run: |
         # 使用 xvfb-run 在虚拟显示器中运行，配合 uc 模式效果更好
         xvfb-run python login.py
