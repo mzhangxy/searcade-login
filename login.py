@@ -59,53 +59,54 @@ def auto_login():
             driver.save_screenshot("debug_login.png")
             return  # 登录失败则终止后续巡检
 
-        # 第二步：服务器状态巡检
-        print("开始巡检服务器状态...")
-        # 确保在管理首页
-        if "/admin" not in driver.current_url:
-            driver.get("https://searcade.com/en/admin")
-                
-        # 目标服务器列表
-        target_servers = ["color", "michael"]
-        time.sleep(5) # 等待服务器列表加载完成
+        # 第三步：服务器状态巡检 
+        print("开始根据 Server ID 巡检服务器状态...")
+        driver.wait_for_element('div[class*="row"]', timeout=15)
         
-        for name in target_servers:
-            # 使用强大的选择器定位包含服务器名字的卡片
-            # 逻辑：找到包含名字的元素，检查其上方的状态标签
-            server_card_xpath = f"//div[contains(@class, 'card')][descendant::*[contains(text(), '{name}')]]"
+        # 定义服务器 名字 -> ID 的映射
+        # michael -> 4193, color -> 4159
+        server_config = {
+            "michael": "4193",
+            "color": "4159" 
+        }
+        
+        for name, s_id in server_config.items():
+            print(f"正在检查服务器: {name} (ID: {s_id})...")
             
-            if driver.is_element_visible(server_card_xpath):
-                # 检查状态文字
-                status_text = driver.get_text(f"{server_card_xpath}//span[contains(@class, 'badge')]")
+            # 使用精准的 CSS 选择器定位：寻找 href 包含特定 ID 的 a 标签
+            # 这种方法不依赖任何文本，只看 HTML 结构里的 ID
+            id_selector = f'a[href*="/servers/{s_id}"]'
+            
+            if driver.is_element_visible(id_selector):
+                # 提取状态文字
+                status_text = driver.get_text(f"{id_selector} span").strip().lower()
                 
-                if "online" in status_text.lower():
-                    print(f"✅ 服务器 {name} 正常 (Status: {status_text})")
+                if "online" in status_text:
+                    print(f"🟢 服务器 {name} (ID: {s_id}) 正常在线。")
                 else:
-                    print(f"⚠️ 服务器 {name} 不在线 (Status: {status_text})，准备尝试启动...")
+                    print(f"🔴 服务器 {name} (ID: {s_id}) 不在线，准备进入控制台...")
                     
-                    # 点击服务器卡片进入控制台
-                    driver.click(f"{server_card_xpath}")
-                    time.sleep(5)
+                    # 直接跳转到控制台 URL，比点击卡片更高效、更不容易出错
+                    console_url = f"https://searcade.com/en/admin/servers/{s_id}"
+                    driver.get(console_url)
                     
-                    # 在控制台页面寻找 Start 按钮
-                    start_btn_selector = 'button:contains("Start")'
+                    # 第四步：自愈操作
+                    print(f"已进入控制台，寻找 Start 按钮...")
+                    driver.wait_for_element('button:contains("Start")', timeout=15)
+                    driver.click('button:contains("Start")')
                     
-                    if driver.is_element_visible(start_btn_selector):
-                        driver.click(start_btn_selector)
-                        print(f"🚀 已点击 {name} 的 Start 按钮，等待启动...")
-                        
-                        # 等待状态变为 Online (最多等待 2 分钟)
-                        try:
-                            driver.wait_for_text("Online", 'span[class*="badge"]', timeout=120)
-                            print(f"🎊 服务器 {name} 重启成功！")
-                        except:
-                            print(f"❌ 服务器 {name} 启动超时，请手动检查。")
+                    try:
+                        # 监测状态变为 Online
+                        driver.wait_for_text("Online", 'span[class*="badge"]', timeout=90)
+                        print(f"🎊 服务器 {name} 重启成功！")
+                    except:
+                        print(f"❌ 等待超时，请手动检查服务器 {name}。")
                     
-                    # 返回管理后台继续检查下一个
+                    # 返回列表页继续检查下一个
                     driver.get("https://searcade.com/en/admin")
-                    time.sleep(3)
+                    time.sleep(5)
             else:
-                print(f"❓ 未能在页面上找到名为 {name} 的服务器卡片。")
+                print(f"❓ 未能在页面上找到 ID 为 {s_id} 的服务器。")
 
     except Exception as e:
         print(f"❌ 运行过程中发生错误: {e}")
