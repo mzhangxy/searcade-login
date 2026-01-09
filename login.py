@@ -114,4 +114,4 @@ def auto_login():
         driver.quit()
 
 if __name__ == "__main__":
-    check_and_start_servers()
+    auto_login()
