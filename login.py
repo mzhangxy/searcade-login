@@ -60,7 +60,7 @@ def auto_login():
             return  # 登录失败则终止后续巡检
 
         # 第三步：服务器状态巡检 
-        print("开始根据 Server ID 巡检服务器状态...")
+        print("开始巡检服务器状态...")
         driver.wait_for_element('div[class*="row"]', timeout=15)
         
         # 定义服务器 名字 -> ID 的映射
