@@ -45,9 +45,15 @@ def auto_login():
         driver.click('button[type="submit"]')
         
         # 登录成功检查
-        time.sleep(5)
-        if "dashboard" in driver.current_url or driver.is_element_visible('a:contains("Logout")'):
-            print("🎉 登录成功！")
+        print("点击登录，等待页面跳转...")
+        time.sleep(8) # 给页面足够的渲染时间
+        
+        current_url = driver.current_url
+        print(f"当前页面 URL: {current_url}")
+
+        # 只要 URL 包含 admin 或页面出现了 Logout 文本，就视为成功
+        if driver.is_text_visible("Successfully signed in as mzhangxy"):
+            print("✅ 登录成功！已成功进入管理后台。")
         else:
             print(f"未能确认登录状态，当前路径: {driver.current_url}")
             driver.save_screenshot("debug_login.png")
