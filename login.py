@@ -3,54 +3,58 @@ import time
 from seleniumbase import Driver
 
 def auto_login():
-    # 获取环境变量（在 GitHub Actions 中配置）
     email = os.environ.get("USER_EMAIL")
     password = os.environ.get("USER_PASSWORD")
     
-    # 启动 Undetected Chromedriver
-    # uc=True 开启绕过模式，headless2 是专门为绕过设计的增强型无头模式
+    # 使用 uc=True 绕过检测
     driver = Driver(uc=True, headless2=True)
     
     try:
         print("正在访问首页...")
         driver.get("https://searcade.com/en/")
-        time.sleep(2)
         
-        # 1. 点击登录按钮
-        print("点击 Login 按钮...")
-        driver.click('a[href*="/login"]') # 根据实际选择器调整
+        # 优化点 1: 使用更宽泛的 CSS 选择器定位 Login 按钮
+        # 尝试匹配包含 "Login" 文本的 a 标签，或 class 中包含 login 的元素
+        print("尝试寻找 Login 按钮...")
+        login_selector = 'a:contains("Login")' 
         
-        # 2. 第一个页面：输入 Email
-        # SeleniumBase 会自动等待 CF 验证完成
-        print("正在处理 Email 页面 (等待 CF 验证)...")
+        # 等待元素加载，增加容错
+        driver.wait_for_element(login_selector, timeout=15)
+        driver.click(login_selector)
+        
+        # 优化点 2: 处理 Cloudflare 5秒盾
+        # 页面跳转到登录页时，Cloudflare 可能会拦截
+        print("已进入登录流程，等待 CF 验证或页面加载...")
+        time.sleep(5) # 强制等待 5 秒是过盾的基础要求
+        
+        # 第一步：输入 Email
+        driver.wait_for_element('input[type="email"]', timeout=20)
         driver.type('input[type="email"]', email)
-        time.sleep(1)
-        driver.click('button:contains("Continue")') # 匹配包含 Continue 的按钮
+        print("已输入 Email")
         
-        # 3. 第二个页面：输入 Password
-        print("正在处理 Password 页面...")
-        # 等待密码输入框出现
-        driver.wait_for_element('input[type="password"]')
-        driver.type('input[type="password"]', password)
-        time.sleep(1)
-        
-        # 点击最终登录
+        # 点击 Continue (根据图片，这通常是一个 type="submit" 的 button)
         driver.click('button[type="submit"]')
         
-        # 验证是否登录成功
+        # 第二步：输入 Password
+        # 此时可能会再次触发 CF 挑战，driver.wait_for_element 会自动重试
+        print("等待密码输入框...")
+        driver.wait_for_element('input[type="password"]', timeout=20)
+        driver.type('input[type="password"]', password)
+        print("已输入密码")
+        
+        driver.click('button[type="submit"]')
+        
+        # 登录成功检查
         time.sleep(5)
-        if "dashboard" in driver.current_url or driver.is_element_visible('a[href*="/logout"]'):
-            print("登录成功！")
-            # 在这里保存 Cookie 或执行后续操作
-            cookies = driver.get_cookies()
-            print(f"成功获取 Cookie，数量: {len(cookies)}")
+        if "dashboard" in driver.current_url or driver.is_element_visible('a:contains("Logout")'):
+            print("🎉 登录成功！")
         else:
-            print(f"登录可能失败，当前 URL: {driver.current_url}")
-            driver.save_screenshot("login_failed.png")
+            print(f"未能确认登录状态，当前路径: {driver.current_url}")
+            driver.save_screenshot("debug_login.png")
 
     except Exception as e:
-        print(f"发生错误: {e}")
-        driver.save_screenshot("error.png")
+        print(f"❌ 运行出错: {e}")
+        driver.save_screenshot("error_screenshot.png")
     finally:
         driver.quit()
 
